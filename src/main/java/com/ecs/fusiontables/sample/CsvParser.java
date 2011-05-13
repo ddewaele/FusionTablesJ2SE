@@ -23,25 +23,17 @@ import com.google.api.client.util.FieldInfo;
 import com.google.api.client.util.GenericData;
 
 /**
- * HTTP parser for Google response to an Authorization request.
- * 
- * @since 1.0
- * @author Yaniv Inbar
+ * CSV parser for Google Fusion Table API responses
  */
 public final class CsvParser implements HttpParser {
 
-	/** Singleton instance. */
-	public static final CsvParser INSTANCE = new CsvParser();
-
-	private static final Pattern CSV_VALUE_PATTERN = Pattern
-			.compile("([^,\\r\\n\"]*|\"(([^\"]*\"\")*[^\"]*)\")(,|\\r?\\n)");
+	private static final Pattern CSV_VALUE_PATTERN = Pattern.compile("([^,\\r\\n\"]*|\"(([^\"]*\"\")*[^\"]*)\")(,|\\r?\\n)");
 
 	public String getContentType() {
 		return "text/plain";
 	}
 
-	public <T> T parse(HttpResponse response, Class<T> dataClass)
-			throws IOException {
+	public <T> T parse(HttpResponse response, Class<T> dataClass) throws IOException {
 		T newInstance = ClassInfo.newInstance(dataClass);
 		ClassInfo classInfo = ClassInfo.of(dataClass);
 		response.disableContentLogging = true;
@@ -62,31 +54,38 @@ public final class CsvParser implements HttpParser {
 
 			try {
 				//System.out.println("Response = " + sb.toString());
-				List<Map<String, String>> parseResponse = parseResponse(sb
-						.toString());
+				List<Map<String, String>> parseResponse = parseResponse(sb.toString());
 
 				Field field = classInfo.getField("records");
-				Collection<Object> col = ClassInfo.newCollectionInstance(field
-						.getType());
-				ParameterizedType t = (ParameterizedType) field
-						.getGenericType();
-				Class type = (Class) t.getActualTypeArguments()[0];
+				
+				if (field!=null) {
 
-				for (Map<String, String> map : parseResponse) {
-					Set<String> keySet = map.keySet();
-
-					Object o = ClassInfo.newInstance(type);
-					ClassInfo childClassInfo = ClassInfo.of(type);
-					for (String key : keySet) {
-						o = fillCsvRecord(key, map.get(key), childClassInfo, o,
-								type);
+					Collection<Object> col = ClassInfo.newCollectionInstance(field.getType());
+					ParameterizedType t = (ParameterizedType) field.getGenericType();
+					Class type = (Class) t.getActualTypeArguments()[0];
+	
+					for (Map<String, String> map : parseResponse) {
+						Set<String> keySet = map.keySet();
+	
+						Object o = ClassInfo.newInstance(type);
+						ClassInfo childClassInfo = ClassInfo.of(type);
+						for (String key : keySet) {
+							o = fillCsvRecord(key, map.get(key), childClassInfo, o,type);
+						}
+						java.lang.reflect.Method add = List.class.getDeclaredMethod("add", Object.class);
+						add.invoke(col, o);
 					}
-					java.lang.reflect.Method add = List.class
-							.getDeclaredMethod("add", Object.class);
-					add.invoke(col, o);
+	
+					FieldInfo.setFieldValue(field, newInstance, col);
+				} else {
+					for (Map<String, String> map : parseResponse) {
+						Set<String> keySet = map.keySet();
+	
+						for (String key : keySet) {
+							fillCsvRecord(key, map.get(key), classInfo, newInstance,dataClass);
+						}
+					}
 				}
-
-				FieldInfo.setFieldValue(field, newInstance, col);
 
 			} catch (Exception ex) {
 				ex.printStackTrace();
@@ -98,6 +97,16 @@ public final class CsvParser implements HttpParser {
 		return newInstance;
 	}
 
+	/**
+	 * Fills up the java model.
+	 * 
+	 * @param key
+	 * @param value
+	 * @param classInfo
+	 * @param newInstance
+	 * @param dataClass
+	 * @return
+	 */
 	public Object fillCsvRecord(String key, String value, ClassInfo classInfo,
 			Object newInstance, Class dataClass) {
 		Field field = classInfo.getField(key);
@@ -121,6 +130,11 @@ public final class CsvParser implements HttpParser {
 		return newInstance;
 	}
 
+	/**
+	 * Parses the response coming back from the API call (CSV format),
+	 * and converts it into a list of maps. (intermediary format).
+	 * This will then be converted in the java model using @fillCsvRecord
+	 */
 	private List<Map<String, String>> parseResponse(String response) {
 		Scanner scanner = new Scanner(response);
 		boolean foundHeader = false;

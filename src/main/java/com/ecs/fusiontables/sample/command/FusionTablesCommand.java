@@ -21,10 +21,10 @@ public abstract class FusionTablesCommand {
 	
 	protected abstract HttpRequest getHttpRequest();
 	
-	public DataList execute() throws Exception {
+	public <T> T execute(Class<T> type) throws Exception {
 		getHttpRequest().setUrl(FUSION_TABLES_API_QUERY);
 		getHttpRequest().addParser(new CsvParser());
 		getHttpRequest().url.put("sql", this.sql);
-		return getHttpRequest().execute().parseAs(DataList.class);
+		return getHttpRequest().execute().parseAs(type);
 	}
 }

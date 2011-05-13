@@ -3,11 +3,15 @@ package com.ecs.fusiontables.sample;
 import java.io.IOException;
 import java.util.List;
 
-import com.ecs.fusiontables.sample.command.DataList;
-import com.ecs.fusiontables.sample.command.DataObject;
 import com.ecs.fusiontables.sample.command.FusionTablesCommand;
 import com.ecs.fusiontables.sample.command.FusionTablesGetCommand;
 import com.ecs.fusiontables.sample.command.FusionTablesPostCommand;
+import com.ecs.fusiontables.sample.model.RowList;
+import com.ecs.fusiontables.sample.model.RowList.Row;
+import com.ecs.fusiontables.sample.model.TableInfoList;
+import com.ecs.fusiontables.sample.model.TableInfoList.TableInfo;
+import com.ecs.fusiontables.sample.model.TableList.Table;
+import com.ecs.fusiontables.sample.model.TableRecords;
 import com.google.api.client.googleapis.GoogleHeaders;
 import com.google.api.client.googleapis.auth.clientlogin.ClientLogin;
 import com.google.api.client.http.HttpRequest;
@@ -67,13 +71,13 @@ public class FusionTablesSample {
 		// Showing all tables.
 		System.out.println(" +++ Begin Show Tables");
 		FusionTablesCommand showTablesCommand = new FusionTablesGetCommand(transport,SQL_SHOW_TABLES);
-		DataList dataList = showTablesCommand.execute();
-		List<DataObject> records = dataList.getRecords();
+		TableInfoList tableList = showTablesCommand.execute(TableInfoList.class);
+		List<TableInfo> records = tableList.records;
 		if (records.size()==0) {
 			System.out.println("No tables found.");
 		} else {
-			for (DataObject dataObject : records) {
-				System.out.println("Found table : " + dataObject.name + "(" + dataObject.table_id + ")");
+			for (TableInfo table : records) {
+				System.out.println("Found table : " + table.name + "(" + table.table_id + ")");
 			}
 		}
 		System.out.println("");
@@ -82,23 +86,34 @@ public class FusionTablesSample {
 	public String createTable() throws Exception {
 		System.out.println(" +++ Create Table");
 		FusionTablesCommand createTableCommand = new FusionTablesPostCommand(transport,SQL_CREATE_TABLE);
-		DataList list = createTableCommand.execute();
-		System.out.println("Table with ID = " + list.getRecords().get(0).tableid + " created");
+		Table table = createTableCommand.execute(Table.class);
+		System.out.println("Table with ID = " + table.tableid + " created");
 		System.out.println("");
-		return list.getRecords().get(0).tableid;
+		return table.tableid;
 	}
 	
 	public void insertIntoTable(String tableId) throws Exception {
 		// Inserting records in a table.
 		System.out.println(" +++ Insert into Tables");
 		String point = "<Point><coordinates>3.517819,50.962329,0.0</coordinates></Point>";
-		String sql = "INSERT INTO "
+		String sql1 = "INSERT INTO "
 				+ tableId
 				+ " (description, name,accuracy,timestamp,geometry) VALUES ('the description','the name',30,"
 				+ System.currentTimeMillis() + ",'" + point + "');";
-		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand(transport, sql);
-		DataList dataList = insertTableCommand.execute();
-		System.out.println("Record inserted with rowID : " + dataList.getRecords().get(0).rowid);
+		String sql2 = "INSERT INTO "
+			+ tableId
+			+ " (description, name,accuracy,timestamp,geometry) VALUES ('the description2','the name2',50,"
+			+ System.currentTimeMillis() + ",'" + point + "');";
+		
+		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand(transport, sql1 + sql2);
+		RowList rowList = insertTableCommand.execute(RowList.class);
+		if (rowList.records.size()==0) {
+			System.out.println("No records inserted.");
+		} else {
+			for (Row row : rowList.records) {
+				System.out.println("record inserted : " + row.rowid);
+			}
+		}
 		System.out.println("");
 
 	}
@@ -106,13 +121,12 @@ public class FusionTablesSample {
 	public void selectFromTable(String tableId) throws Exception {
 		System.out.println(" +++ Select from Tables");
 		FusionTablesCommand getTableCommand = new FusionTablesGetCommand(transport,"SELECT description, name,accuracy,timestamp,geometry FROM "+ tableId);
-		DataList dataList = getTableCommand.execute();
-		List<DataObject> records = dataList.getRecords();
-		if (records.size()==0) {
+		TableRecords tableRecords = getTableCommand.execute(TableRecords.class);
+		if (tableRecords.records.size()==0) {
 			System.out.println("No records found in table " + tableId);
 		} else {
-			for (DataObject dataObject : records) {
-				System.out.println("Found record : " + dataObject.name);
+			for (TableRecords.TableRecord tableRecord : tableRecords.records) {
+				System.out.println("Found record : " + tableRecord.name);
 			}
 		}
 		System.out.println("");
@@ -121,28 +135,20 @@ public class FusionTablesSample {
 	public void dropTable(String tableId) throws Exception {
 		System.out.println(" +++ Drop Tables");
 		 FusionTablesCommand dropTableCommand = new FusionTablesPostCommand(transport,"DROP TABLE " + tableId);
-		 dropTableCommand.execute();
-		 System.out.println("");
+		 String output = dropTableCommand.execute(String.class);
+		 System.out.println(output);
 	}
-
-	// private static boolean isTablePublic(String tableId){
-	// HttpRequest request = transport.buildGetRequest();
-	// request.setUrl("https://www.google.com/fusiontables/api/query");
-	// request.url.put("sql", "SELECT ROWID FROM " + tableId);
-	// try {
-	// request.execute().parseAsString();
-	// return true;
-	// } catch (IOException e) {
-	// return false;
-	// }
-	// }
 
 	public static HttpRequestFactory createRequestFactory(
 			HttpTransport transport) {
 		return transport.createRequestFactory(new HttpRequestInitializer() {
 			public void initialize(HttpRequest request) {
+				GoogleHeaders headers = new GoogleHeaders();
+				headers.setApplicationName("Google-FusionTables/1.0");
+				request.headers = headers;
 				request.addParser(new CsvParser());
 			}
+
 		});
 	}
 
