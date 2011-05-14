@@ -45,7 +45,7 @@ public class FusionTablesSample {
 			sample.dropTable(tableId);
 
 		} catch (HttpResponseException e) {
-			System.err.println(e.response.parseAsString());
+			System.err.println("An exception occured : "+ e.response.parseAsString());
 			throw e;
 		} 
 	}
@@ -93,16 +93,15 @@ public class FusionTablesSample {
 	}
 	
 	public void insertIntoTable(String tableId) throws Exception {
-		// Inserting records in a table.
 		System.out.println(" +++ Insert into Tables");
 		String point = "<Point><coordinates>3.517819,50.962329,0.0</coordinates></Point>";
 		String sql1 = "INSERT INTO "
 				+ tableId
-				+ " (description, name,accuracy,timestamp,geometry) VALUES ('the description','the name',30,"
+				+ " (name,description, accuracy,timestamp,geometry) VALUES ('the name','the description',30,"
 				+ System.currentTimeMillis() + ",'" + point + "');";
 		String sql2 = "INSERT INTO "
 			+ tableId
-			+ " (description, name,accuracy,timestamp,geometry) VALUES ('the description2','the name2',50,"
+			+ " (name,¨description, accuracy,timestamp,geometry) VALUES ('the name2','the description2',50,"
 			+ System.currentTimeMillis() + ",'" + point + "');";
 		
 		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand(transport, sql1 + sql2);
@@ -135,8 +134,7 @@ public class FusionTablesSample {
 	public void dropTable(String tableId) throws Exception {
 		System.out.println(" +++ Drop Tables");
 		 FusionTablesCommand dropTableCommand = new FusionTablesPostCommand(transport,"DROP TABLE " + tableId);
-		 String output = dropTableCommand.execute(String.class);
-		 System.out.println(output);
+		 dropTableCommand.execute(null);
 	}
 
 	public static HttpRequestFactory createRequestFactory(

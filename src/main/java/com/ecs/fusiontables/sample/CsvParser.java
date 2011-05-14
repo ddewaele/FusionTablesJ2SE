@@ -34,6 +34,9 @@ public final class CsvParser implements HttpParser {
 	}
 
 	public <T> T parse(HttpResponse response, Class<T> dataClass) throws IOException {
+		if (dataClass==null) {
+			return null;
+		}
 		T newInstance = ClassInfo.newInstance(dataClass);
 		ClassInfo classInfo = ClassInfo.of(dataClass);
 		response.disableContentLogging = true;
@@ -53,7 +56,7 @@ public final class CsvParser implements HttpParser {
 			}
 
 			try {
-				//System.out.println("Response = " + sb.toString());
+				System.out.println("Response = " + sb.toString());
 				List<Map<String, String>> parseResponse = parseResponse(sb.toString());
 
 				Field field = classInfo.getField("records");
