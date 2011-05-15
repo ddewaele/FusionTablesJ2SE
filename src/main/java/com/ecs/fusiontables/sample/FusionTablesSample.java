@@ -9,7 +9,10 @@ import com.ecs.fusiontables.sample.command.FusionTablesCommand;
 import com.ecs.fusiontables.sample.command.FusionTablesGetCommand;
 import com.ecs.fusiontables.sample.command.FusionTablesPostCommand;
 import com.google.api.client.googleapis.GoogleHeaders;
+import com.google.api.client.googleapis.MethodOverride;
 import com.google.api.client.googleapis.auth.clientlogin.ClientLogin;
+import com.google.api.client.googleapis.auth.clientlogin.ClientLogin.Response;
+import com.google.api.client.http.HttpExecuteInterceptor;
 import com.google.api.client.http.HttpRequest;
 import com.google.api.client.http.HttpRequestFactory;
 import com.google.api.client.http.HttpRequestInitializer;
@@ -22,16 +25,16 @@ public class FusionTablesSample {
 	private static final String SQL_SHOW_TABLES = "SHOW TABLES";
 	private static final String SQL_CREATE_TABLE = "CREATE TABLE 'TEST_TABLE' (description: STRING,name: STRING,accuracy: NUMBER, timestamp: NUMBER, geometry: LOCATION);";
 
-	private HttpTransport transport = new ApacheHttpTransport();
+	private static final HttpTransport transport = new ApacheHttpTransport();
+	public static final HttpRequestFactory httpRequestFactory = createRequestFactory(transport);
+	
 	
 	public static void main(String[] args) throws Exception {
 		
 		FusionTablesSample sample = new FusionTablesSample();
 
 		try {
-			sample.configureTransport();
-			sample.authorizeTransport();
-			
+			//sample.authorizeTransport();
 			sample.showTables();
 			String tableId = sample.createTable();
 			sample.showTables();
@@ -46,27 +49,12 @@ public class FusionTablesSample {
 		} 
 	}
 	
-	private void configureTransport() {
-		GoogleHeaders headers = new GoogleHeaders();
-		headers.setApplicationName("Google-FusionTables/1.0");
-		transport.defaultHeaders = headers;
-		transport.addParser(new CsvParser());
-	}
 
-	private void authorizeTransport() throws HttpResponseException, IOException {
-		// authenticate with ClientLogin
-		ClientLogin authenticator = new ClientLogin();
-		authenticator.authTokenType = Constants.AUTH_TOKEN_TYPE;
-		authenticator.username = Constants.USERNAME;
-		authenticator.password = Constants.PASSWORD;
-		authenticator.transport = transport;
-		authenticator.authenticate().setAuthorizationHeader(transport);		
-	}
 	
 	public void showTables() throws Exception {
 		// Showing all tables.
 		System.out.println(" +++ Begin Show Tables");
-		FusionTablesCommand showTablesCommand = new FusionTablesGetCommand(transport,SQL_SHOW_TABLES);
+		FusionTablesCommand showTablesCommand = new FusionTablesGetCommand(SQL_SHOW_TABLES);
 		DataList dataList = showTablesCommand.execute();
 		List<DataObject> records = dataList.getRecords();
 		if (records.size()==0) {
@@ -81,7 +69,7 @@ public class FusionTablesSample {
 	
 	public String createTable() throws Exception {
 		System.out.println(" +++ Create Table");
-		FusionTablesCommand createTableCommand = new FusionTablesPostCommand(transport,SQL_CREATE_TABLE);
+		FusionTablesCommand createTableCommand = new FusionTablesPostCommand(SQL_CREATE_TABLE);
 		DataList list = createTableCommand.execute();
 		System.out.println("Table with ID = " + list.getRecords().get(0).tableid + " created");
 		System.out.println("");
@@ -96,7 +84,7 @@ public class FusionTablesSample {
 				+ tableId
 				+ " (description, name,accuracy,timestamp,geometry) VALUES ('the description','the name',30,"
 				+ System.currentTimeMillis() + ",'" + point + "');";
-		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand(transport, sql);
+		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand( sql);
 		DataList dataList = insertTableCommand.execute();
 		System.out.println("Record inserted with rowID : " + dataList.getRecords().get(0).rowid);
 		System.out.println("");
@@ -105,7 +93,7 @@ public class FusionTablesSample {
 	
 	public void selectFromTable(String tableId) throws Exception {
 		System.out.println(" +++ Select from Tables");
-		FusionTablesCommand getTableCommand = new FusionTablesGetCommand(transport,"SELECT description, name,accuracy,timestamp,geometry FROM "+ tableId);
+		FusionTablesCommand getTableCommand = new FusionTablesGetCommand("SELECT description, name,accuracy,timestamp,geometry FROM "+ tableId);
 		DataList dataList = getTableCommand.execute();
 		List<DataObject> records = dataList.getRecords();
 		if (records.size()==0) {
@@ -120,7 +108,7 @@ public class FusionTablesSample {
 	
 	public void dropTable(String tableId) throws Exception {
 		System.out.println(" +++ Drop Tables");
-		 FusionTablesCommand dropTableCommand = new FusionTablesPostCommand(transport,"DROP TABLE " + tableId);
+		 FusionTablesCommand dropTableCommand = new FusionTablesPostCommand("DROP TABLE " + tableId);
 		 dropTableCommand.execute();
 		 System.out.println("");
 	}
@@ -138,10 +126,49 @@ public class FusionTablesSample {
 	// }
 
 	public static HttpRequestFactory createRequestFactory(
-			HttpTransport transport) {
+			final HttpTransport transport) {
+		
+		final MethodOverride override = new MethodOverride();
+		
 		return transport.createRequestFactory(new HttpRequestInitializer() {
 			public void initialize(HttpRequest request) {
+				GoogleHeaders headers = new GoogleHeaders();
+				headers.setApplicationName("Google-FusionTables/1.0");
+				request.headers=headers;
+				try {
+					authorizeTransport(request);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				
+				request.interceptor = new HttpExecuteInterceptor() {
+
+			          @Override
+			          public void intercept(HttpRequest request) throws IOException {
+			            override.intercept(request);
+			          }
+			        };
+			        
 				request.addParser(new CsvParser());
+
+	
+			}
+			
+			private void authorizeTransport(HttpRequest request) throws HttpResponseException, IOException {
+				// authenticate with ClientLogin
+				ClientLogin authenticator = new ClientLogin();
+				authenticator.authTokenType = Constants.AUTH_TOKEN_TYPE;
+				authenticator.username = Constants.USERNAME;
+				authenticator.password = Constants.PASSWORD;
+				authenticator.transport = transport;
+				try {
+					Response response = authenticator.authenticate();
+					request.headers.authorization=response.getAuthorizationHeaderValue();
+				} catch (HttpResponseException e) {
+					e.printStackTrace();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}		
 			}
 		});
 	}

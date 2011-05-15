@@ -1,19 +1,17 @@
 package com.ecs.fusiontables.sample.command;
 
+import com.ecs.fusiontables.sample.FusionTablesSample;
+import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpTransport;
 
 public class FusionTablesPostCommand extends FusionTablesCommand {
 
-	private HttpRequest request;
-	
-	public FusionTablesPostCommand(HttpTransport transport,String sql) {
-		super(transport,sql);
-		this.request = transport.buildPostRequest();
-		this.request.setUrl(FUSION_TABLES_API_QUERY);
+	public FusionTablesPostCommand(String sql) {
+		super(sql);
 	}
-	
-	protected HttpRequest getHttpRequest() {
-		return this.request;
+
+	@Override
+	protected HttpRequest getHttpRequest() throws Exception {
+		return FusionTablesSample.httpRequestFactory.buildPostRequest(new GenericUrl(FUSION_TABLES_API_QUERY),null);
 	}
 }

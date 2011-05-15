@@ -1,30 +1,23 @@
 package com.ecs.fusiontables.sample.command;
 
-import com.ecs.fusiontables.sample.CsvParser;
 import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpTransport;
 
 public abstract class FusionTablesCommand {
 	
 	protected static final String FUSION_TABLES_API_QUERY = "https://www.google.com/fusiontables/api/query";
-	protected HttpTransport transport;
+	protected static final String SHOW_TABLES="SHOW TABLES";
 	private String sql;
 	
-	protected static final String SHOW_TABLES="SHOW TABLES";
-	
-	
-	public FusionTablesCommand(HttpTransport transport,String sql) {
-		this.transport=transport;
+	public FusionTablesCommand(String sql) {
 		this.sql=sql;
 		
 	}
 	
-	protected abstract HttpRequest getHttpRequest();
+	protected abstract HttpRequest getHttpRequest() throws Exception;
 	
 	public DataList execute() throws Exception {
-		getHttpRequest().setUrl(FUSION_TABLES_API_QUERY);
-		getHttpRequest().addParser(new CsvParser());
-		getHttpRequest().url.put("sql", this.sql);
-		return getHttpRequest().execute().parseAs(DataList.class);
+		HttpRequest httpRequest = getHttpRequest();	
+		httpRequest.url.put("sql", sql);
+		return httpRequest.execute().parseAs(DataList.class);
 	}
 }
