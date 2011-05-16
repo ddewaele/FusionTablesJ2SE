@@ -25,16 +25,12 @@ public class FusionTablesSample {
 	private static final String SQL_SHOW_TABLES = "SHOW TABLES";
 	private static final String SQL_CREATE_TABLE = "CREATE TABLE 'TEST_TABLE' (description: STRING,name: STRING,accuracy: NUMBER, timestamp: NUMBER, geometry: LOCATION);";
 
-	private static final HttpTransport transport = new ApacheHttpTransport();
-	public static final HttpRequestFactory httpRequestFactory = createRequestFactory(transport);
-	
 	
 	public static void main(String[] args) throws Exception {
 		
 		FusionTablesSample sample = new FusionTablesSample();
 
 		try {
-			//sample.authorizeTransport();
 			sample.showTables();
 			String tableId = sample.createTable();
 			sample.showTables();
@@ -113,64 +109,5 @@ public class FusionTablesSample {
 		 System.out.println("");
 	}
 
-	// private static boolean isTablePublic(String tableId){
-	// HttpRequest request = transport.buildGetRequest();
-	// request.setUrl("https://www.google.com/fusiontables/api/query");
-	// request.url.put("sql", "SELECT ROWID FROM " + tableId);
-	// try {
-	// request.execute().parseAsString();
-	// return true;
-	// } catch (IOException e) {
-	// return false;
-	// }
-	// }
-
-	public static HttpRequestFactory createRequestFactory(
-			final HttpTransport transport) {
-		
-		final MethodOverride override = new MethodOverride();
-		
-		return transport.createRequestFactory(new HttpRequestInitializer() {
-			public void initialize(HttpRequest request) {
-				GoogleHeaders headers = new GoogleHeaders();
-				headers.setApplicationName("Google-FusionTables/1.0");
-				request.headers=headers;
-				try {
-					authorizeTransport(request);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-				
-				request.interceptor = new HttpExecuteInterceptor() {
-
-			          @Override
-			          public void intercept(HttpRequest request) throws IOException {
-			            override.intercept(request);
-			          }
-			        };
-			        
-				request.addParser(new CsvParser());
-
-	
-			}
-			
-			private void authorizeTransport(HttpRequest request) throws HttpResponseException, IOException {
-				// authenticate with ClientLogin
-				ClientLogin authenticator = new ClientLogin();
-				authenticator.authTokenType = Constants.AUTH_TOKEN_TYPE;
-				authenticator.username = Constants.USERNAME;
-				authenticator.password = Constants.PASSWORD;
-				authenticator.transport = transport;
-				try {
-					Response response = authenticator.authenticate();
-					request.headers.authorization=response.getAuthorizationHeaderValue();
-				} catch (HttpResponseException e) {
-					e.printStackTrace();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}		
-			}
-		});
-	}
 
 }

@@ -1,6 +1,5 @@
 package com.ecs.fusiontables.sample.command;
 
-import com.ecs.fusiontables.sample.FusionTablesSample;
 import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.HttpRequest;
 
@@ -12,7 +11,7 @@ public class FusionTablesGetCommand extends FusionTablesCommand{
 
 	@Override
 	protected HttpRequest getHttpRequest() throws Exception {
-		return FusionTablesSample.httpRequestFactory.buildGetRequest(new GenericUrl(FUSION_TABLES_API_QUERY));
+		return httpRequestFactory.buildGetRequest(new GenericUrl(FUSION_TABLES_API_QUERY));
 	}
 
 }
