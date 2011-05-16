@@ -56,7 +56,9 @@ public final class CsvParser implements HttpParser {
 			}
 
 			try {
-				System.out.println("Response = " + sb.toString());
+				System.out.println("CVS Response");
+				System.out.println("------------");
+				System.out.println(sb.toString());
 				List<Map<String, String>> parseResponse = parseResponse(sb.toString());
 
 				Field field = classInfo.getField("records");

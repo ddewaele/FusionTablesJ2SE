@@ -1,6 +1,5 @@
 package com.ecs.fusiontables.sample;
 
-import java.io.IOException;
 import java.util.List;
 
 import com.ecs.fusiontables.sample.command.FusionTablesCommand;
@@ -12,30 +11,19 @@ import com.ecs.fusiontables.sample.model.TableInfoList;
 import com.ecs.fusiontables.sample.model.TableInfoList.TableInfo;
 import com.ecs.fusiontables.sample.model.TableList.Table;
 import com.ecs.fusiontables.sample.model.TableRecords;
-import com.google.api.client.googleapis.GoogleHeaders;
-import com.google.api.client.googleapis.auth.clientlogin.ClientLogin;
-import com.google.api.client.http.HttpRequest;
-import com.google.api.client.http.HttpRequestFactory;
-import com.google.api.client.http.HttpRequestInitializer;
 import com.google.api.client.http.HttpResponseException;
-import com.google.api.client.http.HttpTransport;
-import com.google.api.client.http.apache.ApacheHttpTransport;
 
 public class FusionTablesSample {
 
 	private static final String SQL_SHOW_TABLES = "SHOW TABLES";
 	private static final String SQL_CREATE_TABLE = "CREATE TABLE 'TEST_TABLE' (description: STRING,name: STRING,accuracy: NUMBER, timestamp: NUMBER, geometry: LOCATION);";
 
-	private HttpTransport transport = new ApacheHttpTransport();
 	
 	public static void main(String[] args) throws Exception {
 		
 		FusionTablesSample sample = new FusionTablesSample();
 
 		try {
-			sample.configureTransport();
-			sample.authorizeTransport();
-			
 			sample.showTables();
 			String tableId = sample.createTable();
 			sample.showTables();
@@ -50,27 +38,12 @@ public class FusionTablesSample {
 		} 
 	}
 	
-	private void configureTransport() {
-		GoogleHeaders headers = new GoogleHeaders();
-		headers.setApplicationName("Google-FusionTables/1.0");
-		transport.defaultHeaders = headers;
-		transport.addParser(new CsvParser());
-	}
 
-	private void authorizeTransport() throws HttpResponseException, IOException {
-		// authenticate with ClientLogin
-		ClientLogin authenticator = new ClientLogin();
-		authenticator.authTokenType = Constants.AUTH_TOKEN_TYPE;
-		authenticator.username = Constants.USERNAME;
-		authenticator.password = Constants.PASSWORD;
-		authenticator.transport = transport;
-		authenticator.authenticate().setAuthorizationHeader(transport);		
-	}
 	
 	public void showTables() throws Exception {
 		// Showing all tables.
-		System.out.println(" +++ Begin Show Tables");
-		FusionTablesCommand showTablesCommand = new FusionTablesGetCommand(transport,SQL_SHOW_TABLES);
+		System.out.println(" +++ Begin Show Tables\n");
+		FusionTablesCommand showTablesCommand = new FusionTablesGetCommand(SQL_SHOW_TABLES);
 		TableInfoList tableList = showTablesCommand.execute(TableInfoList.class);
 		List<TableInfo> records = tableList.records;
 		if (records.size()==0) {
@@ -84,8 +57,8 @@ public class FusionTablesSample {
 	}
 	
 	public String createTable() throws Exception {
-		System.out.println(" +++ Create Table");
-		FusionTablesCommand createTableCommand = new FusionTablesPostCommand(transport,SQL_CREATE_TABLE);
+		System.out.println(" +++ Create Table\n");
+		FusionTablesCommand createTableCommand = new FusionTablesPostCommand(SQL_CREATE_TABLE);
 		Table table = createTableCommand.execute(Table.class);
 		System.out.println("Table with ID = " + table.tableid + " created");
 		System.out.println("");
@@ -93,7 +66,7 @@ public class FusionTablesSample {
 	}
 	
 	public void insertIntoTable(String tableId) throws Exception {
-		System.out.println(" +++ Insert into Tables");
+		System.out.println(" +++ Insert into Tables\n");
 		String point = "<Point><coordinates>3.517819,50.962329,0.0</coordinates></Point>";
 		String sql1 = "INSERT INTO "
 				+ tableId
@@ -104,7 +77,7 @@ public class FusionTablesSample {
 			+ " (name,¨description, accuracy,timestamp,geometry) VALUES ('the name2','the description2',50,"
 			+ System.currentTimeMillis() + ",'" + point + "');";
 		
-		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand(transport, sql1 + sql2);
+		FusionTablesCommand insertTableCommand = new FusionTablesPostCommand(sql1 + sql2);
 		RowList rowList = insertTableCommand.execute(RowList.class);
 		if (rowList.records.size()==0) {
 			System.out.println("No records inserted.");
@@ -118,8 +91,8 @@ public class FusionTablesSample {
 	}
 	
 	public void selectFromTable(String tableId) throws Exception {
-		System.out.println(" +++ Select from Tables");
-		FusionTablesCommand getTableCommand = new FusionTablesGetCommand(transport,"SELECT description, name,accuracy,timestamp,geometry FROM "+ tableId);
+		System.out.println(" +++ Select from Tables\n");
+		FusionTablesCommand getTableCommand = new FusionTablesGetCommand("SELECT description, name,accuracy,timestamp,geometry FROM "+ tableId);
 		TableRecords tableRecords = getTableCommand.execute(TableRecords.class);
 		if (tableRecords.records.size()==0) {
 			System.out.println("No records found in table " + tableId);
@@ -133,21 +106,10 @@ public class FusionTablesSample {
 	
 	public void dropTable(String tableId) throws Exception {
 		System.out.println(" +++ Drop Tables");
-		 FusionTablesCommand dropTableCommand = new FusionTablesPostCommand(transport,"DROP TABLE " + tableId);
+		 FusionTablesCommand dropTableCommand = new FusionTablesPostCommand("DROP TABLE " + tableId);
 		 dropTableCommand.execute(null);
 	}
 
-	public static HttpRequestFactory createRequestFactory(
-			HttpTransport transport) {
-		return transport.createRequestFactory(new HttpRequestInitializer() {
-			public void initialize(HttpRequest request) {
-				GoogleHeaders headers = new GoogleHeaders();
-				headers.setApplicationName("Google-FusionTables/1.0");
-				request.headers = headers;
-				request.addParser(new CsvParser());
-			}
-
-		});
-	}
+	
 
 }
